@@ -690,7 +690,7 @@ class evaluateScore:
         # 1. 处理输出的jsonl,处理成相应json的形式，保存在output文件夹中
     def eval_VRDU_F1(self, jsonl_file_path, dataset_name):
         # 清空输出文件夹，方便生成处理后的输出文件
-        processed_output_path = os.path.join(data_dir, 'output')
+        processed_output_path = os.path.join(data_dir, 'vrdu', 'output')
         delete_files_in_folder(processed_output_path)
 
         # 存一下split的文件，同时解决命名问题 split_name 作为处理后保存的名字.    output中的文件加上-test_predictions
@@ -705,30 +705,29 @@ class evaluateScore:
             "test": test_pdf_list
         }
         split_name = f'DeepForm-mixed_template-train_{len(train_pdf_list)}-test_{len(test_pdf_list)}-valid_0-SD_0.json'
-        few_shot_path = os.path.join(meta_dir_pre, f'vrdu/{dataset_name}-form/few_shot-splits')
+        few_shot_path = os.path.join(data_dir, f'vrdu/{dataset_name}-form/few_shot-splits')
         if (dataset_name != 'ad-buy'): split_name.replace('DeepForm', 'FARA-lv2')
         save_path = os.path.join(few_shot_path, split_name)
         json.dump(split_msg, open(save_path, 'w', encoding="utf-8"), ensure_ascii=False, indent=2)
         # 重组一份dataset.jsonl，只包含train_kv_dict和test_kv_dict中有的信息
-        pre_datasets_file = os.path.join(meta_dir_pre, f'vrdu/{dataset_name}-form/main/dataset_original.jsonl')
+        pre_datasets_file = os.path.join(data_dir, f'vrdu/{dataset_name}-form/main/dataset_original.jsonl')
         original_data = read_jsonl(pre_datasets_file)
         processed_original = filter_original_data(original_data, train_kv_dict, test_kv_dict)
-        save_path = os.path.join(meta_dir_pre, f'vrdu/{dataset_name}-form/main/dataset.jsonl')
+        save_path = os.path.join(data_dir, f'vrdu/{dataset_name}-form/main/dataset.jsonl')
         with open(save_path, 'w', encoding='utf-8') as f:
             for item in processed_original:
                 f.write(json.dumps(item, ensure_ascii=False) + '\n')
 
         # 输出的文件
-        jsonl_file_path = check_path(jsonl_file_path)
         jsonl_output = read_jsonl(jsonl_file_path)
         output_res = format_jsonl(jsonl_output, test_kv_dict)
         save_path = os.path.join(processed_output_path, split_name.replace('SD_0.json', 'SD_0-test_predictions.json'))
         json.dump(output_res, open(save_path, 'w', encoding="utf-8"), ensure_ascii=False, indent=2)
 
         from vrdu.evaluate import vrdu_solve
-        base_dirpath = os.path.join(meta_dir_pre, f'vrdu/{dataset_name}-form')
-        extraction_path = os.path.join(meta_dir_pre, 'vrdu', 'output')
-        eval_output_path = os.path.join(meta_dir_pre, 'vrdu', 'output.csv')
+        base_dirpath = os.path.join(data_dir, f'vrdu/{dataset_name}-form')
+        extraction_path = os.path.join(data_dir, 'vrdu', 'output')
+        eval_output_path = os.path.join(data_dir, 'vrdu', 'output.csv')
         vrdu_solve(dataset_name, base_dirpath, extraction_path, eval_output_path)
         import csv
         micro_f1_value, macro_f1_value = None, None
