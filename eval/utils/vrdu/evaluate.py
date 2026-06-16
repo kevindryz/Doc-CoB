@@ -66,7 +66,6 @@ def main(argv):
   eval_df.to_csv(open(_EVAL_OUTPUT_PATH.value, 'w'), sep='\t')
 
 def vrdu_solve(Type,  base_dirpath, extraction_path, eval_output_path):
-  base_dir = '/mnt/NAS_SHARE/20240806/6650/datasets/raw_data/vrdu/ad-buy-form'
   # Load model extractions and the split files.
   ground_truth, experiments = evaluate_utils.load_experiments(
       base_dirpath, extraction_path)
