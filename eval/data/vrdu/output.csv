@@ -1,0 +1,2 @@
+task	train_size	metric-micro_f1	metric-macro_f1
+mixed_template	256	0.15398660986001217	0.1471692995720614

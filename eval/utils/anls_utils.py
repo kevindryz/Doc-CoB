@@ -9,6 +9,7 @@ import textdistance
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 data_dir = os.path.join(script_dir, "..", "data")
+meta_dir_pre = os.path.join(data_dir, "meta")
 
 def get_origin_id(origin_test_file):
     id_dict = {}
@@ -124,7 +125,6 @@ def read_jsonl(file_path):
     return data
 
 def get_pdf_list(data):
-    # 转换成相应的pdf list
     files = []
     name_dict = {}
     for item in data:
@@ -134,7 +134,6 @@ def get_pdf_list(data):
         q = item['conversations'][0]['value']
         entity = q.split('for the ')[1]
         name_dict[name].append(entity)
-    # 一定要去重
     unique_files = list(set(files))
     return unique_files, name_dict
 
@@ -422,14 +421,6 @@ class evaluateScore:
                 continue
             if isinstance(annotation, str) and annotation[0]=='[':
                 annotation = eval(annotation)
-
-            # if isinstance(onepair['result'], list):
-            #     result111 = onepair['result'][0]
-            # else:
-            #     result111 = onepair['result']
-
-            # if result111.endswith('.'):
-            #     result111 = result111[:-1]
             
             outputs.append({
                 # 'question': onepair['conversations'][0]['value'],
@@ -437,12 +428,7 @@ class evaluateScore:
                 'annotation': annotation,
                 'pre_res': onepair
             })
-        # print("exclude_num,max24:", exclude_count)
-        # print("valid_num",len(outputs))
         anls_res, true_list, false_list = evaluateANLS(outputs, anls_threshold)
-        # true_list_save_path, false_list_save_path = 'docvqa_true_list.json', 'docvqa_false_list.json'
-        # json.dump(true_list, open(true_list_save_path, 'w', encoding="utf-8"), ensure_ascii=False, indent=2)
-        # json.dump(false_list, open(false_list_save_path, 'w', encoding="utf-8"), ensure_ascii=False, indent=2)
         return anls_res
     
     def evalVQAScore(self, jsonl_file_path, annotation_path):
@@ -494,11 +480,6 @@ class evaluateScore:
             merged_outputs.append({"annotation": item['conversations'][1]['value'],"answer": item['result'], 'pre_res': item})
         accuracy, true_list, false_list = evaluate_exact_match_accuracy(merged_outputs)
         
-        # json.dump(true_list, open('true_list.json', 'w', encoding="utf-8"), ensure_ascii=False, indent=2)
-        # json.dump(false_list, open('false_list.json', 'w', encoding="utf-8"), ensure_ascii=False, indent=2)
-        # with open(file_path, 'w') as file:
-        #     for entry in false_list:
-        #         file.write(json.dumps(entry) + '\n')
         return accuracy, none_answer, has_answer
 
     def evalRelaxedAccuracy(self, jsonl_file_path):
@@ -514,16 +495,13 @@ class evaluateScore:
             scores.append(score)
         return sum(scores) / len(scores)
 
-    def eval_F1(self, llm_pred_path = None, meta_dir = '/mnt/NAS_SHARE/20240806/6650/dieyu/myutils/meta', dataset_name = 'DeepForm', split = 'test'):
+    def eval_F1(self, llm_pred_path = None, meta_dir = './meta', dataset_name = 'DeepForm', split = 'test'):
         """
         reformat results by LLM for due-benchmark evaluation 
 
         """
         # print(llm_pred_path)
-        if (os.path.exists(meta_dir) == False):
-            meta_dir = '/mnt/workspace/20240806/6650/dieyu/myutils/meta'
-        if (os.path.exists(meta_dir) == False):
-            meta_dir = '/mnt/mynas/20240806/6650/dieyu/myutils/meta'
+        meta_dir = meta_dir_pre
         assert dataset_name in ['DocVQA', 'InfographicsVQA', 'WikiTableQuestions', 'DeepForm', 'KleisterCharity', 'TabFact']
         # ic(dataset_name)
         if dataset_name == 'DeepForm':
@@ -540,11 +518,7 @@ class evaluateScore:
         
         preds = []
         id_list = []
-        origin_test_file = '/mnt/NAS_SHARE/20240806/6650/datasets/processed_data/eval_data/DeepForm_test.jsonl'
-        if (os.path.exists(origin_test_file) == False):
-            origin_test_file = '/mnt/workspace/20240806/6650/datasets/processed_data/eval_data/DeepForm_test.jsonl'
-        if (os.path.exists(origin_test_file) == False):
-            origin_test_file = '/mnt/mynas/20240806/6650/datasets/processed_data/eval_data/DeepForm_test.jsonl'
+        origin_test_file = os.path.join(meta_dir_pre, 'DeepForm_test.jsonl')
         origin_id_dict = get_origin_id(origin_test_file)
         with open(llm_pred_path, 'r', encoding='utf-8') as f:
             for line in f:
@@ -661,15 +635,8 @@ class evaluateScore:
     def eval_ANLS_dude(self, jsonl_file_path, anls_threshold=0.5):
         # 用来处理gt
         gt_name, val_name = 'DUDE_val_gt_tem.json', 'DUDE_val.json'
-        nas_name = 'NAS_SHARE'
-        gt_dir = '/mnt/NAS_SHARE/20240806/6650/notebook/code/DUDEeval'
-        if (os.path.exists(gt_dir) == False):
-            gt_dir = '/mnt/workspace/20240806/6650/notebook/code/DUDEeval'
-            nas_name = 'workspace'
-        if (os.path.exists(gt_dir) == False):
-            gt_dir = '/mnt/mynas/20240806/6650/notebook/code/DUDEeval'
-            nas_name = 'mynas'
-        gt_dict = get_dude_mapping(nas_name)
+        gt_dir = os.path.join(data_dir, 'DUDEeval')
+        gt_dict = get_dude_mapping()
         res_pred = []
         res_gt = {
             "dataset_name": "DUDE Dataset",
@@ -723,13 +690,12 @@ class evaluateScore:
         # 1. 处理输出的jsonl,处理成相应json的形式，保存在output文件夹中
     def eval_VRDU_F1(self, jsonl_file_path, dataset_name):
         # 清空输出文件夹，方便生成处理后的输出文件
-        processed_output_path = check_path('/mnt/NAS_SHARE/20240806/6650/datasets/raw_data/vrdu/output')
+        processed_output_path = os.path.join(data_dir, 'output')
         delete_files_in_folder(processed_output_path)
 
         # 存一下split的文件，同时解决命名问题 split_name 作为处理后保存的名字.    output中的文件加上-test_predictions
-        eval_data_path = check_path('/mnt/NAS_SHARE/20240806/6650/datasets/processed_data/eval_data')
-        train_jsonl = os.path.join(eval_data_path, f'VRDU_{dataset_name}-form_train.jsonl')
-        test_jsonl = os.path.join(eval_data_path, f'VRDU_{dataset_name}-form_test.jsonl')
+        train_jsonl = os.path.join(meta_dir_pre, f'VRDU_{dataset_name}-form_train.jsonl')
+        test_jsonl = os.path.join(meta_dir_pre, f'VRDU_{dataset_name}-form_test.jsonl')
         train_data, test_data = read_jsonl(train_jsonl), read_jsonl(test_jsonl)
         train_pdf_list, train_kv_dict = get_pdf_list(train_data)
         test_pdf_list, test_kv_dict = get_pdf_list(test_data)
@@ -739,15 +705,15 @@ class evaluateScore:
             "test": test_pdf_list
         }
         split_name = f'DeepForm-mixed_template-train_{len(train_pdf_list)}-test_{len(test_pdf_list)}-valid_0-SD_0.json'
-        few_shot_path = f'/mnt/NAS_SHARE/20240806/6650/datasets/raw_data/vrdu/{dataset_name}-form/few_shot-splits'
+        few_shot_path = os.path.join(meta_dir_pre, f'vrdu/{dataset_name}-form/few_shot-splits')
         if (dataset_name != 'ad-buy'): split_name.replace('DeepForm', 'FARA-lv2')
-        save_path = os.path.join(check_path(few_shot_path), split_name)
+        save_path = os.path.join(few_shot_path, split_name)
         json.dump(split_msg, open(save_path, 'w', encoding="utf-8"), ensure_ascii=False, indent=2)
         # 重组一份dataset.jsonl，只包含train_kv_dict和test_kv_dict中有的信息
-        pre_datasets_file = check_path(f'/mnt/NAS_SHARE/20240806/6650/datasets/raw_data/vrdu/{dataset_name}-form/main/dataset_original.jsonl')
+        pre_datasets_file = os.path.join(meta_dir_pre, f'vrdu/{dataset_name}-form/main/dataset_original.jsonl')
         original_data = read_jsonl(pre_datasets_file)
         processed_original = filter_original_data(original_data, train_kv_dict, test_kv_dict)
-        save_path = check_path(f'/mnt/NAS_SHARE/20240806/6650/datasets/raw_data/vrdu/{dataset_name}-form/main/dataset.jsonl')
+        save_path = os.path.join(meta_dir_pre, f'vrdu/{dataset_name}-form/main/dataset.jsonl')
         with open(save_path, 'w', encoding='utf-8') as f:
             for item in processed_original:
                 f.write(json.dumps(item, ensure_ascii=False) + '\n')
@@ -756,13 +722,13 @@ class evaluateScore:
         jsonl_file_path = check_path(jsonl_file_path)
         jsonl_output = read_jsonl(jsonl_file_path)
         output_res = format_jsonl(jsonl_output, test_kv_dict)
-        save_path = os.path.join(check_path(processed_output_path), split_name.replace('SD_0.json', 'SD_0-test_predictions.json'))
+        save_path = os.path.join(processed_output_path, split_name.replace('SD_0.json', 'SD_0-test_predictions.json'))
         json.dump(output_res, open(save_path, 'w', encoding="utf-8"), ensure_ascii=False, indent=2)
 
         from vrdu.evaluate import vrdu_solve
-        base_dirpath = check_path(f'/mnt/NAS_SHARE/20240806/6650/datasets/raw_data/vrdu/{dataset_name}-form')
-        extraction_path = check_path('/mnt/NAS_SHARE/20240806/6650/datasets/raw_data/vrdu/output')
-        eval_output_path = check_path('/mnt/NAS_SHARE/20240806/6650/datasets/raw_data/vrdu/vrdu/output.csv')
+        base_dirpath = os.path.join(meta_dir_pre, f'vrdu/{dataset_name}-form')
+        extraction_path = os.path.join(meta_dir_pre, 'vrdu', 'output')
+        eval_output_path = os.path.join(meta_dir_pre, 'vrdu', 'output.csv')
         vrdu_solve(dataset_name, base_dirpath, extraction_path, eval_output_path)
         import csv
         micro_f1_value, macro_f1_value = None, None
