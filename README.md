@@ -9,6 +9,7 @@ modelscope download --dataset mercury01/Doc-CoB
 2. 找到解压后`eval`目录下两个VRDU数据集对应的`.jsonl`文件；
 3. 在项目根目录依次创建路径：`data/vrdu/[数据集名称]/main/`；
 4. 将下载的`.jsonl`文件分别移入各自对应数据集的`main`文件夹内。
+5. 运行`eval/evaluate.py`脚本进行测试, 其中`pat_lis`指定为包含测试结果文件的路径。
 
 示例目录结构参考：
 ```
