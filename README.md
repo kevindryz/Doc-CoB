@@ -1,8 +1,12 @@
 # Doc-CoB
 ### 数据集下载
 ```bash
-modelscope download --dataset mercury01/Doc-CoB
+# 本地路径自行指定
+modelscope download --dataset mercury01/Doc-CoB --local_dir ./
 ```
+| 资源 | 链接 |
+| ---- | ---- |
+| 🤖 | [https://www.modelscope.cn/datasets/mercury01/Doc-CoB](https://www.modelscope.cn/datasets/mercury01/Doc-CoB) |
 
 ### 评测数据集部署
 1. 下载VRDU评估数据集相关文件；
